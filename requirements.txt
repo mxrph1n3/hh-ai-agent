@@ -3,4 +3,5 @@ aiogram
 python-dotenv
 requests
 aiohttp
+aiohttp-socks
 playwright-stealth
