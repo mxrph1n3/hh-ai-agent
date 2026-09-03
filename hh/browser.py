@@ -1,13 +1,17 @@
 import os
-import asyncio
 from playwright.async_api import async_playwright, Browser, BrowserContext, Page
 from playwright_stealth import Stealth
-from config import HEADLESS
+from config import HEADLESS, BROWSER_PROXY
 
 STATE_FILE = os.path.join(os.path.dirname(__file__), "..", "state.json")
 USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
     "(KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36"
+)
+
+_PROXY_ENV_KEYS = (
+    "HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "NO_PROXY",
+    "http_proxy", "https_proxy", "all_proxy", "no_proxy",
 )
 
 
@@ -22,7 +26,24 @@ class BrowserSession:
 
     async def start(self):
         self.playwright = await async_playwright().start()
-        self.browser = await self.playwright.chromium.launch(headless=HEADLESS)
+
+        env = os.environ.copy()
+        for key in _PROXY_ENV_KEYS:
+            env.pop(key, None)
+
+        launch_kwargs = {
+            "headless": HEADLESS,
+            "env": env,
+        }
+        if BROWSER_PROXY:
+            print(f"Браузер: прокси {BROWSER_PROXY}")
+            launch_kwargs["proxy"] = {"server": BROWSER_PROXY}
+        else:
+            # Игнор битого системного прокси (ERR_PROXY_CONNECTION_FAILED)
+            launch_kwargs["args"] = ["--no-proxy-server"]
+            print("Браузер: без прокси (системный игнорируется)")
+
+        self.browser = await self.playwright.chromium.launch(**launch_kwargs)
         kwargs = {"user_agent": USER_AGENT}
         if os.path.exists(STATE_FILE):
             kwargs["storage_state"] = STATE_FILE

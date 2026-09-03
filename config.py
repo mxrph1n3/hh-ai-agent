@@ -38,6 +38,9 @@ SEARCH_CONFIGS = [
 
 # headless=False — HH стабильнее отдаёт выдачу в видимом браузере
 HEADLESS = os.getenv("HEADLESS", "false").lower() in ("1", "true", "yes")
+# Прокси для браузера (пусто = без прокси, игнор системного)
+# Пример: http://127.0.0.1:7890 или socks5://127.0.0.1:1080
+BROWSER_PROXY = os.getenv("BROWSER_PROXY", "").strip() or None
 
 # Пауза между циклами поиска (минуты)
 LOOP_INTERVAL_MINUTES = int(os.getenv("LOOP_INTERVAL_MINUTES", "30"))
