@@ -70,12 +70,55 @@ async def collect_vacancy_links(page: Page) -> list[tuple[str, str]]:
     return links
 
 
+async def _dismiss_overlays(page: Page):
+    """Закрывает чат HH и sticky-оверлеи, которые перехватывают клики."""
+    await page.evaluate(
+        """() => {
+            document.querySelectorAll('[data-qa="chatik-root"]').forEach(el => {
+                el.style.display = 'none';
+                el.style.pointerEvents = 'none';
+            });
+            document.querySelectorAll('iframe.chatik-integration-iframe').forEach(el => {
+                el.style.display = 'none';
+                el.style.pointerEvents = 'none';
+            });
+        }"""
+    )
+    for sel in (
+        'button[aria-label*="акрыть"]',
+        'button[data-qa*="close"]',
+        '[data-qa="chatik"] button',
+    ):
+        btn = page.locator(sel).first
+        try:
+            if await btn.count() and await btn.is_visible():
+                await btn.click(timeout=1000, force=True)
+        except Exception:
+            pass
+
+
 async def has_next_page(page: Page) -> bool:
-    btn = page.locator('a[data-qa="pager-next"], [data-qa="pager-next"]')
-    return await btn.count() > 0 and await btn.is_visible()
+    btn = page.locator('a[data-qa="pager-next"]').first
+    try:
+        return await btn.count() > 0 and await btn.is_visible()
+    except Exception:
+        return False
 
 
 async def go_next_page(page: Page):
-    btn = page.locator('a[data-qa="pager-next"], [data-qa="pager-next"]')
-    await btn.click()
+    """Переход на следующую страницу без клика по перекрытому элементу."""
+    await _dismiss_overlays(page)
+    btn = page.locator('a[data-qa="pager-next"]').first
+    href = await btn.get_attribute("href")
+    if href:
+        if href.startswith("/"):
+            href = f"https://hh.ru{href}"
+        await page.goto(href, wait_until="domcontentloaded", timeout=30000)
+        await asyncio.sleep(2)
+        return
+
+    try:
+        await btn.click(timeout=5000, force=True)
+    except Exception:
+        await btn.evaluate("el => el.click()")
     await asyncio.sleep(4)

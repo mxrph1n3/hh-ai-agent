@@ -1,17 +1,32 @@
 import asyncio
 import os
 import signal
-from config import ENABLE_TELEGRAM, LOOP_INTERVAL_MINUTES
+from config import ENABLE_TELEGRAM, ENABLE_AI_FILTER, LOOP_INTERVAL_MINUTES
 from storage.db import init_db
 from hh.client import HHAgent
 from agent.notify import notify
+from ai.analyzer import check_ollama
 
 
 async def run_agent(stop_event: asyncio.Event):
     agent = HHAgent()
     try:
-        await agent.start()
-        if not await agent.login():
+        try:
+            await agent.start()
+        except Exception as e:
+            print(f"❌ Не удалось запустить браузер: {e}")
+            stop_event.set()
+            return
+
+        try:
+            logged_in = await agent.login()
+        except Exception as e:
+            print(f"❌ Ошибка входа: {e}")
+            stop_event.set()
+            return
+
+        if not logged_in:
+            print("❌ Вход в HH не выполнен — останавливаем.")
             stop_event.set()
             return
 
@@ -66,6 +81,8 @@ async def main():
     print("Инициализация завершена.")
     if not ENABLE_TELEGRAM:
         print("Telegram отключён.")
+    if ENABLE_AI_FILTER:
+        await check_ollama()
 
     stop_event = asyncio.Event()
     setup_signals(stop_event)

@@ -10,8 +10,13 @@ TG_USER_ID = os.getenv("TG_USER_ID", "YOUR_USER_ID_HERE")
 TG_PROXY = os.getenv("TG_PROXY", "").strip() or None
 
 # Ollama
-OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434/api/generate")
+OLLAMA_BASE = os.getenv("OLLAMA_BASE", "http://localhost:11434").rstrip("/")
+OLLAMA_URL = os.getenv("OLLAMA_URL", f"{OLLAMA_BASE}/api/generate")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3")
+# False — только фильтр по названию, без ИИ (если Ollama не установлена)
+ENABLE_AI_FILTER = os.getenv("ENABLE_AI_FILTER", "true").lower() in ("1", "true", "yes")
+# При ошибке Ollama: true = пропускать дальше, false = отклонять
+AI_FAIL_OPEN = os.getenv("AI_FAIL_OPEN", "true").lower() in ("1", "true", "yes")
 
 # --- Поиск на HH ---
 SEARCH_QUERIES = [

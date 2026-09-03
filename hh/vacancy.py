@@ -1,5 +1,6 @@
 import asyncio
 from playwright.async_api import Page
+from config import ENABLE_AI_FILTER
 from ai.analyzer import is_vacancy_suitable
 from filters.title import title_passes, reject_reason
 from hh.apply import Applicant
@@ -45,7 +46,13 @@ async def process_vacancy(
             return
 
         description = await desc_loc.inner_text()
-        if await is_vacancy_suitable(title, description):
+        suitable = True
+        if ENABLE_AI_FILTER:
+            suitable = await is_vacancy_suitable(title, description)
+        else:
+            print(f"   ИИ-фильтр выключен (ENABLE_AI_FILTER=false)")
+
+        if suitable:
             print(f"✨ Подходит: {title}")
             await applicant.apply(page, title, href, job_id, description, notify)
         else:
