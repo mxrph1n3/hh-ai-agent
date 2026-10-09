@@ -128,3 +128,26 @@ crm маркетинг a b тесты лидогенерация b2b b2c скв�
 
 не интересны: стажировки junior чистый smm маркетплейсы wildberries ozon продажи арбитраж.
 """
+
+# --- Яндекс Исполнители (дизайн-студия) ---
+YANDEX_ORDERS_URL = os.getenv("YANDEX_ORDERS_URL", "https://uslugi.yandex.ru/orders")
+YANDEX_DRY_RUN = os.getenv("YANDEX_DRY_RUN", "true").lower() in ("1", "true", "yes")
+YANDEX_MAX_REPLIES = int(os.getenv("YANDEX_MAX_REPLIES", "7"))
+YANDEX_MIN_BUDGET = int(os.getenv("YANDEX_MIN_BUDGET", "0"))
+YANDEX_OFFER_PRICE = int(os.getenv("YANDEX_OFFER_PRICE", "0"))
+YANDEX_CITY = os.getenv("YANDEX_CITY", "Москва")
+YANDEX_TIMELINE = os.getenv(
+    "YANDEX_TIMELINE",
+    "замер в течение 2 дней, дизайн-проект от 2 недель",
+)
+YANDEX_LOOP_MINUTES = int(os.getenv("YANDEX_LOOP_MINUTES", str(LOOP_INTERVAL_MINUTES)))
+
+STUDIO_SUMMARY = """
+дизайн-студия интерьера. город: {city}.
+берём: дизайн интерьера квартир и домов, дизайн-проект, планировку, 3d визуализацию,
+комплектацию, авторский надзор, ремонт квартиры под дизайн, отделку, перепланировку.
+срок: {timeline}.
+не берём: сантехнику отдельным заказом, электрику, окна, кондиционеры, клининг,
+сборку мебели, авто, красоту, юристов, репетиторов, грузоперевозки.
+в отклике нельзя указывать телефон, почту, сайт и мессенджеры.
+""".format(city=YANDEX_CITY, timeline=YANDEX_TIMELINE)

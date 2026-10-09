@@ -1,6 +1,9 @@
 .env
 state.json
+state_yandex.json
 agent.db
+yandex_feed.png
+yandex_reply_preview.png
 __pycache__/
 *.pyc
 .venv/
