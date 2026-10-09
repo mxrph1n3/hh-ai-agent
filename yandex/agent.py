@@ -7,7 +7,6 @@ from ai.analyzer import check_ollama
 from ai.yandex_analyzer import generate_reply, is_order_suitable
 from config import (
     YANDEX_DRY_RUN,
-    YANDEX_MAX_REPLIES,
     YANDEX_ORDERS_URL,
 )
 from storage.db import (
@@ -64,19 +63,19 @@ async def _cycle(session: BrowserSession):
     await page.goto(YANDEX_ORDERS_URL, wait_until="domcontentloaded", timeout=60000)
 
     sent_today = count_yandex_replies_today()
-    print(f"Откликов сегодня: {sent_today}/{YANDEX_MAX_REPLIES}")
-    seen_pages: set[tuple] = set()
+    print(f"Откликов сегодня: {sent_today}. Лимит отключён, откликаемся дальше.")
+    seen_order_sets: set[tuple] = set()
 
     for page_num in range(1, 31):
         if stop_event_set():
             return
         orders = await collect_orders(page)
-        first_id = orders[0]["id"] if orders else ""
-        signature = (page.url.split("#")[0], first_id, len(orders))
-        if signature in seen_pages:
-            print("Лента не сменилась, следующая страница не открылась.")
+        order_ids = tuple(order["id"] for order in orders)
+        if order_ids and order_ids in seen_order_sets:
+            print("На странице те же заказы. Дальше лента не листается.")
             break
-        seen_pages.add(signature)
+        if order_ids:
+            seen_order_sets.add(order_ids)
         print(f"Страница {page_num}: {page.url}")
         print(f"   Заказов: {len(orders)}")
 
@@ -92,16 +91,10 @@ async def _cycle(session: BrowserSession):
                 add_yandex_order(order["id"], order["title"], order["url"], "rejected")
                 continue
 
-            if sent_today >= YANDEX_MAX_REPLIES and not YANDEX_DRY_RUN:
-                print("Лимит откликов на сегодня исчерпан.")
-                return
-
             await _handle_order(session, order)
-            if not YANDEX_DRY_RUN:
-                sent_today = count_yandex_replies_today()
 
         print(f"Переход со страницы {page_num}...")
-        if not await go_next_feed_page(page):
+        if not await go_next_feed_page(page, page_num):
             print("Дальше страниц нет.")
             break
 

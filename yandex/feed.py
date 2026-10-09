@@ -1,7 +1,7 @@
 import asyncio
 import hashlib
 import re
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 from playwright.async_api import Page
 
 _ORDER_ID_IN_PATH = re.compile(r"/orders?/\d+", re.I)
@@ -95,7 +95,7 @@ def _is_order_link(href: str) -> bool:
     return False
 
 
-async def go_next_feed_page(page: Page) -> bool:
+async def go_next_feed_page(page: Page, current_page: int = 1) -> bool:
     """Открывает следующую страницу ленты. False — страниц больше нет."""
     await page.evaluate(
         """() => {
@@ -156,7 +156,14 @@ async def go_next_feed_page(page: Page) -> bool:
     if not target or not target.get("label"):
         debug = (target or {}).get("debug") or []
         print(f"   Номера страниц не найдены: {', '.join(debug) or 'пусто'}")
-        return False
+        next_number = current_page + 1
+        href = _url_with_page(before, next_number)
+        if href.rstrip("/") == before.rstrip("/"):
+            return False
+        print(f"   Открываем по ссылке страницу {next_number}")
+        await page.goto(href, wait_until="domcontentloaded", timeout=60000)
+        await asyncio.sleep(1.5)
+        return True
 
     print(f"   Открываем страницу {target['label']}")
     href = target.get("href") or ""
@@ -184,6 +191,13 @@ async def go_next_feed_page(page: Page) -> bool:
             return False
     await asyncio.sleep(1.5)
     return True
+
+
+def _url_with_page(url: str, page_num: int) -> str:
+    parts = urlparse(url)
+    query = {key: values[-1] for key, values in parse_qs(parts.query).items()}
+    query["page"] = str(page_num)
+    return urlunparse(parts._replace(query=urlencode(query)))
 
 
 def _order_id(href: str, title: str) -> str:
