@@ -44,10 +44,6 @@ async def send_reply(page: Page, comment: str, source_text: str) -> tuple[bool, 
         print("   DRY RUN: отклик не отправлен")
         return False, price_note
 
-    if not price:
-        print("   Боевой отклик пропущен: задайте YANDEX_OFFER_PRICE или бюджет в заказе")
-        return False, price_note
-
     sent = await _submit(page)
     if sent:
         print("   Отклик отправлен")
