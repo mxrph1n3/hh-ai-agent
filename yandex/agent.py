@@ -78,7 +78,7 @@ async def _cycle(session: BrowserSession):
         if is_yandex_seen(order["id"]):
             continue
 
-        reason = reject_reason(order["title"])
+        reason = reject_reason(f"{order['title']}\n{order['preview']}")
         if reason:
             print(f"⏩ Мимо [{reason}]: {order['title']}")
             add_yandex_order(order["id"], order["title"], order["url"], "rejected")
@@ -114,6 +114,11 @@ async def _handle_order(session: BrowserSession, order: dict):
         description = await read_order_text(page)
         if not description:
             print("   Пустая карточка")
+            return
+
+        if reason := reject_reason(description):
+            print(f"   ⏩ Мимо [{reason}]")
+            add_yandex_order(order["id"], order["title"], order["url"], "rejected")
             return
 
         if not await is_order_suitable(order["title"], description):
