@@ -140,7 +140,8 @@ YANDEX_TIMELINE = os.getenv(
     "YANDEX_TIMELINE",
     "замер в течение 2 дней, дизайн-проект от 2 недель",
 )
-YANDEX_LOOP_MINUTES = int(os.getenv("YANDEX_LOOP_MINUTES", str(LOOP_INTERVAL_MINUTES)))
+# Короче, чем у HH: заказы на Яндексе разбирают быстро
+YANDEX_LOOP_MINUTES = int(os.getenv("YANDEX_LOOP_MINUTES", "5"))
 
 STUDIO_SUMMARY = """
 мы дизайн-студия интерьера, не частный мастер. город: {city}.

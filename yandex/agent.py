@@ -163,6 +163,7 @@ def setup_signals(stop_event: asyncio.Event):
 async def main():
     init_yandex_db()
     print("Яндекс Исполнители.")
+    print(f"Пауза между проверками ленты: {YANDEX_LOOP_MINUTES} мин.")
     if YANDEX_DRY_RUN:
         print("Режим проверки: отклики не отправляются. Боевой режим: YANDEX_DRY_RUN=false")
     await check_ollama()
