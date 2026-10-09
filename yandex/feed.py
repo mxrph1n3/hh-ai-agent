@@ -1,9 +1,10 @@
 import asyncio
 import hashlib
 import re
+from urllib.parse import parse_qs, urlparse
 from playwright.async_api import Page
 
-_ORDER_HREF = re.compile(r"/orders?(?:/|\?|$)|orderId=|order_id=", re.I)
+_ORDER_ID_IN_PATH = re.compile(r"/orders?/\d+", re.I)
 
 
 async def collect_orders(page: Page) -> list[dict]:
@@ -13,17 +14,8 @@ async def collect_orders(page: Page) -> list[dict]:
     except Exception:
         pass
     await asyncio.sleep(2)
-
-    for _ in range(3):
-        await page.mouse.wheel(0, 900)
-        await asyncio.sleep(0.5)
-        more = page.get_by_role("button", name=re.compile(r"показать ещё|ещё заказ", re.I)).first
-        try:
-            if await more.count() and await more.is_visible():
-                await more.click(timeout=3000)
-                await asyncio.sleep(1)
-        except Exception:
-            pass
+    await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+    await asyncio.sleep(0.8)
 
     raw = await page.evaluate(
         """() => {
@@ -61,7 +53,7 @@ async def collect_orders(page: Page) -> list[dict]:
     orders: list[dict] = []
     for card in raw.get("cards") or []:
         href = card.get("href") or ""
-        if href and not _ORDER_HREF.search(href) and "/order" not in href.lower():
+        if not _is_order_link(href):
             continue
         title = (card.get("title") or "").strip()
         preview = (card.get("preview") or "").strip()
@@ -83,6 +75,80 @@ async def collect_orders(page: Page) -> list[dict]:
         except Exception:
             pass
     return orders
+
+
+def _is_order_link(href: str) -> bool:
+    """Ссылка на заказ, а не на страницу ленты и не на номер пагинации."""
+    if not href:
+        return False
+    lowered = href.lower()
+    if "orderid=" in lowered or "order_id=" in lowered:
+        return True
+    path = urlparse(href).path.rstrip("/")
+    if _ORDER_ID_IN_PATH.search(path):
+        return True
+    if "/order/" in path and not path.endswith("/orders"):
+        query = parse_qs(urlparse(href).query)
+        if "page" in query and path.endswith("/orders"):
+            return False
+        return True
+    return False
+
+
+async def go_next_feed_page(page: Page) -> bool:
+    """Открывает следующую страницу ленты. False — страниц больше нет."""
+    await page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+    await asyncio.sleep(0.6)
+    before = page.url
+    target = await page.evaluate(
+        """() => {
+            const textOf = (el) => ((el.getAttribute('aria-label') || '') + ' ' + (el.innerText || ''))
+                .replace(/\\s+/g, ' ').trim().toLowerCase();
+            const visible = (el) => {
+                const r = el.getBoundingClientRect();
+                return r.width > 0 && r.height > 0;
+            };
+            const nodes = [...document.querySelectorAll('a[href], button')].filter(visible);
+            const labeled = nodes.find((el) => /следующ|дальше|вперёд|вперед|показать ещё|показать еще/.test(textOf(el)));
+            if (labeled) {
+                const disabled = labeled.getAttribute('aria-disabled') === 'true' || labeled.hasAttribute('disabled');
+                return { href: labeled.href || labeled.getAttribute('href') || '', disabled };
+            }
+            const currentEl = document.querySelector('[aria-current="page"], [aria-current="true"]');
+            const current = currentEl ? parseInt((currentEl.innerText || '').trim(), 10) : NaN;
+            if (current) {
+                const link = nodes.find((el) => (el.innerText || '').trim() === String(current + 1) && el.href);
+                if (link) return { href: link.href, disabled: false };
+            }
+            return null;
+        }"""
+    )
+    if not target or target.get("disabled"):
+        return False
+
+    href = target.get("href") or ""
+    if href.startswith("/"):
+        href = f"https://uslugi.yandex.ru{href}"
+    if href and href != before:
+        await page.goto(href, wait_until="domcontentloaded", timeout=60000)
+        await asyncio.sleep(1.5)
+        return page.url.rstrip("/") != before.rstrip("/")
+
+    clicked = await page.evaluate(
+        """() => {
+            const textOf = (el) => ((el.getAttribute('aria-label') || '') + ' ' + (el.innerText || ''))
+                .replace(/\\s+/g, ' ').trim().toLowerCase();
+            const nodes = [...document.querySelectorAll('a, button')];
+            const labeled = nodes.find((el) => /следующ|дальше|показать ещё|показать еще/.test(textOf(el)));
+            if (!labeled) return false;
+            labeled.click();
+            return true;
+        }"""
+    )
+    if not clicked:
+        return False
+    await asyncio.sleep(1.5)
+    return True
 
 
 def _order_id(href: str, title: str) -> str:

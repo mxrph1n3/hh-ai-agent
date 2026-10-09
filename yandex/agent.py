@@ -20,7 +20,7 @@ from storage.db import (
 from yandex.apply import read_order_text, send_reply
 from yandex.auth import ensure_logged_in
 from yandex.browser import BrowserSession
-from yandex.feed import collect_orders
+from yandex.feed import collect_orders, go_next_feed_page
 from yandex.filters import reject_reason
 from yandex.text import sanitize_reply
 
@@ -66,31 +66,48 @@ async def _cycle(session: BrowserSession):
     page = session.page
     print("Обновляем ленту заказов...")
     await page.goto(YANDEX_ORDERS_URL, wait_until="domcontentloaded", timeout=60000)
-    orders = await collect_orders(page)
-    print(f"Заказов на ленте: {len(orders)}")
 
     sent_today = count_yandex_replies_today()
     print(f"Откликов сегодня: {sent_today}/{YANDEX_MAX_REPLIES}")
+    seen_pages: set[tuple] = set()
 
-    for order in orders:
+    for page_num in range(1, 31):
         if stop_event_set():
             return
-        if is_yandex_seen(order["id"]):
-            continue
+        orders = await collect_orders(page)
+        first_id = orders[0]["id"] if orders else ""
+        signature = (page.url.split("#")[0], first_id, len(orders))
+        if signature in seen_pages:
+            print("Лента не сменилась, следующая страница не открылась.")
+            break
+        seen_pages.add(signature)
+        print(f"Страница {page_num}: {page.url}")
+        print(f"   Заказов: {len(orders)}")
 
-        reason = reject_reason(f"{order['title']}\n{order['preview']}")
-        if reason:
-            print(f"⏩ Мимо [{reason}]: {order['title']}")
-            add_yandex_order(order["id"], order["title"], order["url"], "rejected")
-            continue
+        for order in orders:
+            if stop_event_set():
+                return
+            if is_yandex_seen(order["id"]):
+                continue
 
-        if sent_today >= YANDEX_MAX_REPLIES and not YANDEX_DRY_RUN:
-            print("Лимит откликов на сегодня исчерпан.")
-            return
+            reason = reject_reason(f"{order['title']}\n{order['preview']}")
+            if reason:
+                print(f"⏩ Мимо [{reason}]: {order['title']}")
+                add_yandex_order(order["id"], order["title"], order["url"], "rejected")
+                continue
 
-        await _handle_order(session, order)
-        if not YANDEX_DRY_RUN:
-            sent_today = count_yandex_replies_today()
+            if sent_today >= YANDEX_MAX_REPLIES and not YANDEX_DRY_RUN:
+                print("Лимит откликов на сегодня исчерпан.")
+                return
+
+            await _handle_order(session, order)
+            if not YANDEX_DRY_RUN:
+                sent_today = count_yandex_replies_today()
+
+        print(f"Переход со страницы {page_num}...")
+        if not await go_next_feed_page(page):
+            print("Дальше страниц нет.")
+            break
 
 
 _stop = {"event": None}
