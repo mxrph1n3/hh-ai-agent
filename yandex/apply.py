@@ -3,7 +3,7 @@ import re
 from playwright.async_api import Page
 
 from config import YANDEX_DRY_RUN, YANDEX_TIMELINE
-from yandex.text import choose_price, sanitize_reply
+from yandex.text import sanitize_reply
 
 
 async def send_reply(page: Page, comment: str, source_text: str) -> tuple[bool, str]:
@@ -15,34 +15,29 @@ async def send_reply(page: Page, comment: str, source_text: str) -> tuple[bool, 
     if YANDEX_TIMELINE.lower() not in comment.lower():
         comment = sanitize_reply(f"{comment}\n\nСрок: {YANDEX_TIMELINE}.")
 
-    price, price_note = choose_price(source_text)
     opened = await _open_form(page)
     if await _looks_sent(page):
         print("   Сайт уже засчитал отклик на этом шаге")
-        return True, price_note
+        return True, "без цены"
     if not opened:
         print("   Кнопка «Откликнуться» не найдена")
         await _shot(page)
-        return False, price_note
+        return False, "без цены"
 
     filled = await _fill_comment(page, comment)
     if not filled:
         print("   Поле комментария не найдено")
         await _shot(page)
-        return False, price_note
+        return False, "без цены"
 
-    if price:
-        await _fill_price(page, price)
-        print(f"   Цена: {price} ₽ ({price_note})")
-    else:
-        print(f"   {price_note}: поле цены не заполняем")
+    print("   Цену не указываем")
 
     print(f"   Текст:\n{comment}")
     await _shot(page, "yandex_reply_preview.png")
 
     if YANDEX_DRY_RUN:
         print("   DRY RUN: отклик не отправлен")
-        return False, price_note
+        return False, "без цены"
 
     sent = await _submit(page)
     if sent:
@@ -50,7 +45,7 @@ async def send_reply(page: Page, comment: str, source_text: str) -> tuple[bool, 
     else:
         print("   Кнопка отправки не найдена")
         await _shot(page)
-    return sent, price_note
+    return sent, "без цены"
 
 
 async def _open_form(page: Page) -> bool:
@@ -102,24 +97,6 @@ async def _fill_comment(page: Page, comment: str) -> bool:
             return True
         except Exception:
             return False
-
-
-async def _fill_price(page: Page, price: int) -> None:
-    value = str(price)
-    for sel in (
-        "input[name*='price' i]",
-        "input[inputmode='numeric']",
-        "input[type='number']",
-        "input[placeholder*='цен' i]",
-        "input[placeholder*='стоим' i]",
-    ):
-        field = page.locator(sel).first
-        try:
-            if await field.count() and await field.is_visible():
-                await field.fill(value)
-                return
-        except Exception:
-            continue
 
 
 async def _submit(page: Page) -> bool:

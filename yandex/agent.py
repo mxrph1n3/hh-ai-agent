@@ -7,7 +7,6 @@ from ai.analyzer import check_ollama
 from ai.yandex_analyzer import generate_reply, is_order_suitable
 from config import (
     YANDEX_DRY_RUN,
-    YANDEX_LOOP_MINUTES,
     YANDEX_MAX_REPLIES,
     YANDEX_ORDERS_URL,
 )
@@ -50,13 +49,10 @@ async def run(stop_event: asyncio.Event):
                 raise
             except Exception as e:
                 print(f"Ошибка цикла: {e}")
+                await asyncio.sleep(3)
+                continue
 
-            print(f"Ожидание {YANDEX_LOOP_MINUTES} мин...")
-            try:
-                await asyncio.wait_for(stop_event.wait(), timeout=YANDEX_LOOP_MINUTES * 60)
-                break
-            except asyncio.TimeoutError:
-                pass
+            print("Лента пройдена, сразу проверяем снова.")
     finally:
         print("Закрываем браузер...")
         await session.stop()
@@ -179,8 +175,7 @@ def setup_signals(stop_event: asyncio.Event):
 
 async def main():
     init_yandex_db()
-    print("Яндекс Исполнители.")
-    print(f"Пауза между проверками ленты: {YANDEX_LOOP_MINUTES} мин.")
+    print("Яндекс Исполнители. Лента проверяется без паузы.")
     if YANDEX_DRY_RUN:
         print("Режим проверки: отклики не отправляются. Боевой режим: YANDEX_DRY_RUN=false")
     await check_ollama()
