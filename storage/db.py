@@ -23,6 +23,12 @@ def init_db():
                 text TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
+            CREATE TABLE IF NOT EXISTS form_drafts (
+                url TEXT PRIMARY KEY,
+                title TEXT,
+                status TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
         """)
 
 
@@ -53,4 +59,19 @@ def add_processed_message(msg_id: str, chat_id: str, text: str):
         conn.execute(
             "INSERT OR IGNORE INTO chat_messages (msg_id, chat_id, text) VALUES (?, ?, ?)",
             (msg_id, chat_id, text),
+        )
+
+
+def is_form_prepared(url: str) -> bool:
+    with _connect() as conn:
+        return conn.execute(
+            "SELECT 1 FROM form_drafts WHERE url = ?", (url,)
+        ).fetchone() is not None
+
+
+def add_form_draft(url: str, title: str, status: str):
+    with _connect() as conn:
+        conn.execute(
+            "INSERT OR IGNORE INTO form_drafts (url, title, status) VALUES (?, ?, ?)",
+            (url, title, status),
         )

@@ -35,7 +35,7 @@ async def run_agent(stop_event: asyncio.Event):
         while not stop_event.is_set():
             try:
                 await agent.run_search_cycle(notify)
-                if ENABLE_TELEGRAM and not stop_event.is_set():
+                if not stop_event.is_set():
                     await agent.check_chats(notify)
             except asyncio.CancelledError:
                 raise
