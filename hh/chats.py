@@ -25,26 +25,58 @@ async def _scan_chats(session: BrowserSession, notify, unread_only: bool):
             cards = cards.filter(has=page.locator('span[data-qa="negotiations-item-badge"]'))
         found = await cards.count()
         print(f"Чатов к проверке: {found}")
+        items = await page.evaluate(
+            """() => {
+                const cards = [...document.querySelectorAll('[data-qa="negotiations-item"]')];
+                return cards.map((card) => {
+                    const links = [...card.querySelectorAll('a[href]')].map((a) => ({
+                        href: a.getAttribute('href') || '',
+                        text: (a.innerText || '').trim().slice(0, 200),
+                    }));
+                    const preferred = links.find((item) => /negotiation|topic|chat/i.test(item.href))
+                        || links.find((item) => /vacancy/i.test(item.href))
+                        || links[0]
+                        || { href: '', text: '' };
+                    return { title: preferred.text || '?', href: preferred.href, links: links.slice(0, 6) };
+                });
+            }"""
+        )
+        if items and not any(item.get("href") for item in items):
+            print("В карточках нет ссылок. Первая карточка:")
+            print(items[0])
+            await page.screenshot(path="negotiations.png")
+            print("Скрин: negotiations.png")
 
-        for index in range(found):
-            card = cards.nth(index)
-            title_loc = card.locator('a[data-qa="negotiations-item-vacancy-link"]')
-            title = await title_loc.inner_text() if await title_loc.is_visible() else "?"
-            chat_link = await title_loc.get_attribute("href")
+        for item in items:
+            title = item.get("title") or "?"
+            chat_link = item.get("href") or ""
             if not chat_link:
+                print(f"Пропуск без ссылки: {title}")
                 continue
 
             chat_page = await session.new_page()
             try:
                 href = f"https://hh.ru{chat_link}" if chat_link.startswith("/") else chat_link
-                await chat_page.goto(href)
-                await asyncio.sleep(3)
-                messages = await chat_page.locator('div[data-qa="chat-message-text"]').all()
-                if not messages:
+                print(f"Чат: {title}")
+                await chat_page.goto(href, wait_until="domcontentloaded", timeout=60000)
+                await asyncio.sleep(2)
+                messages = chat_page.locator(
+                    'div[data-qa="chat-message-text"], [data-qa*="chat-message"], [data-qa*="message-text"]'
+                )
+                count = await messages.count()
+                if count == 0:
+                    print(f"   Сообщений не видно: {title}")
                     continue
-                texts = [await item.inner_text() for item in messages]
+                texts = []
+                for msg_index in range(count):
+                    try:
+                        texts.append(await messages.nth(msg_index).inner_text(timeout=3000))
+                    except Exception:
+                        continue
+                if not texts:
+                    continue
                 last_msg = texts[-1]
-                msg_id = f"{chat_link}_{len(messages)}"
+                msg_id = f"{chat_link}_{len(texts)}"
                 fresh = not is_message_processed(msg_id)
                 if fresh:
                     add_processed_message(msg_id, chat_link, last_msg)
@@ -54,6 +86,8 @@ async def _scan_chats(session: BrowserSession, notify, unread_only: bool):
                     )
                 blob = last_msg if unread_only else "\n".join(texts)
                 await _open_forms(session, title, blob, notify)
+            except Exception as e:
+                print(f"Чат не открылся [{title}]: {e}")
             finally:
                 await chat_page.close()
     finally:
