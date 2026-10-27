@@ -1,25 +1,13 @@
 import asyncio
 import random
 from playwright.async_api import Page
-from config import ENABLE_TELEGRAM
 
 
 async def solve_captcha(page: Page, title: str, notify) -> bool:
-    """Решает капчу через консоль или Telegram. True = описание появилось."""
+    """Решает капчу через консоль. True = описание появилось."""
     await page.screenshot(path="captcha.png")
-
-    if ENABLE_TELEGRAM:
-        import tg_bot
-        await tg_bot.send_captcha_request(
-            "captcha.png",
-            f"🚨 Капча: {title}. Введите текст с картинки:",
-        )
-        print("Ожидаем капчу из Telegram...")
-        await tg_bot.captcha_event.wait()
-        solution = tg_bot.captcha_solution
-    else:
-        print("Капча: captcha.png")
-        solution = await asyncio.to_thread(input, "👉 Текст капчи: ")
+    print(f"🚨 Капча: {title}. Картинка: captcha.png")
+    solution = await asyncio.to_thread(input, "👉 Текст капчи: ")
 
     print(f"Вводим: {solution}")
     input_field = page.locator('input[type="text"]').first
@@ -40,10 +28,8 @@ async def solve_captcha(page: Page, title: str, notify) -> bool:
 
     desc = page.locator('div[data-qa="vacancy-description"]').first
     if await desc.is_visible():
-        await notify("✅ Капча пройдена.")
         print("✅ Капча пройдена.")
         return True
 
-    await notify("❌ Капча не пройдена.")
     print("❌ Капча не пройдена.")
     return False

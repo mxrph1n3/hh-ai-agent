@@ -102,7 +102,9 @@ async def is_vacancy_suitable(vacancy_title: str, vacancy_description: str) -> b
 
 не подходит NO если:
 - стажировка junior с обучением без опыта ассистент
-- чистый smm смм контент рилсы без performance
+- любая вакансия smm смм контент контент-маркетинг рилсы reels сторис соцсети копирайтинг блог ugc tiktok
+- даже если рядом написано маркетолог performance или digital
+- упоминание контента как второстепенной задачи в performance или crm вакансии само по себе не NO
 - маркетплейсы wildberries ozon как основная задача
 - продажи холодные звонки без маркетинга
 - арбитраж гемблинг крипта
@@ -110,7 +112,8 @@ async def is_vacancy_suitable(vacancy_title: str, vacancy_description: str) -> b
 - product manager без маркетинга
 - оперативный директор
 
-если сомневаешься между YES и NO — ответь YES
+если вакансия про контент или smm и есть сомнение — NO
+если сомневаешься между YES и NO по другой причине — YES
 
 вакансия: {vacancy_title}
 описание: {vacancy_description[:3500]}

@@ -3,12 +3,6 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Telegram (по умолчанию выключен)
-ENABLE_TELEGRAM = os.getenv("ENABLE_TELEGRAM", "false").lower() in ("1", "true", "yes")
-TG_BOT_TOKEN = os.getenv("TG_BOT_TOKEN", "YOUR_BOT_TOKEN_HERE")
-TG_USER_ID = os.getenv("TG_USER_ID", "YOUR_USER_ID_HERE")
-TG_PROXY = os.getenv("TG_PROXY", "").strip() or None
-
 # Ollama
 OLLAMA_BASE = os.getenv("OLLAMA_BASE", "http://localhost:11434").rstrip("/")
 OLLAMA_URL = os.getenv("OLLAMA_URL", f"{OLLAMA_BASE}/api/generate")
@@ -71,10 +65,14 @@ TITLE_REJECT = [
     "преподаватель", "учитель", "педагог",
     "бухгалтер", "юрист",
     "дизайнер", "designer", "рилсмейкер", "reels maker",
-    "инфлюенс", "influencer", "блогер",
-    # чистый SMM
-    "smm", "смм", "smm-маркетолог", "smm маркетолог", "смм-маркетолог",
-    "смм менеджер", "smm менеджер", "smm-менеджер", "смм-менеджер",
+    "инфлюенс", "influencer", "блогер", "блог",
+    # контент и SMM
+    "smm", "смм", "контент", "content",
+    "контент-мейкер", "контент мейкер", "content maker", "контент-менеджер", "контент менеджер",
+    "копирайтер", "копирайт",
+    "рилс", "рилсы", "reels", "сторис", "stories",
+    "соцсет", "ugc", "тикток", "tiktok", "ютуб", "youtube",
+    "видеограф", "видеомейкер", "видеомонтаж",
     "арбитраж", "сетап", "fb аккаунт", "facebook аккаунт",
     "крипт", "казино", "гембл", "betting",
     # маркетплейсы
@@ -126,5 +124,18 @@ open rate с 12 до 25.8 процентов. ctr с 1.6 до 5.2 процент
 навыки: яндекс директ яндекс метрика vk ads telegram ads авито seo рся bitrix24 amocrm
 crm маркетинг a b тесты лидогенерация b2b b2c сквозная аналитика unit экономика.
 
-не интересны: стажировки junior чистый smm маркетплейсы wildberries ozon продажи арбитраж.
+не интересны: стажировки junior smm смм контент рилсы соцсети маркетплейсы wildberries ozon продажи арбитраж.
 """
+
+# --- Чаты и формы из чатов ---
+# Обход чатов hh.ru/chat
+ENABLE_CHATS = os.getenv("ENABLE_CHATS", "true").lower() in ("1", "true", "yes")
+# Сколько чатов из списка просматривать за цикл
+CHATS_SCAN_LIMIT = int(os.getenv("CHATS_SCAN_LIMIT", "60"))
+# Заполнение анкет по ссылкам из чатов (только заполнение, отправляете вы сами)
+ENABLE_FORMS = os.getenv("ENABLE_FORMS", "true").lower() in ("1", "true", "yes")
+# Модель для ответов в формах (нужен стабильный JSON, llama3 справляется плохо)
+FORMS_MODEL = os.getenv("FORMS_MODEL", "qwen2.5:14b")
+FORMS_MAX_PER_CYCLE = int(os.getenv("FORMS_MAX_PER_CYCLE", "3"))
+PROFILE_FILE = os.getenv("PROFILE_FILE", os.path.join(os.path.dirname(__file__), "profile.yaml"))
+FORMS_SHOTS_DIR = os.path.join(os.path.dirname(__file__), "forms_shots")

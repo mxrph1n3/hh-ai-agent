@@ -2,7 +2,7 @@ import asyncio
 from playwright.async_api import Page
 from config import ENABLE_AI_FILTER
 from ai.analyzer import is_vacancy_suitable
-from filters.title import title_passes, reject_reason
+from filters.title import content_smm_reason, title_passes, reject_reason
 from hh.apply import Applicant
 from hh.captcha import solve_captcha
 from storage.db import is_job_applied, add_applied_job
@@ -46,6 +46,11 @@ async def process_vacancy(
             return
 
         description = await desc_loc.inner_text()
+        if reason := content_smm_reason(f"{title}\n{description}"):
+            print(f"⏩ Контент/SMM [{reason}]: {title}")
+            add_applied_job(job_id, title, href, "rejected")
+            return
+
         suitable = True
         if ENABLE_AI_FILTER:
             suitable = await is_vacancy_suitable(title, description)

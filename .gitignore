@@ -8,3 +8,6 @@ venv/
 env/
 .vscode/
 .idea/
+profile.yaml
+forms_shots/
+*.png

@@ -1,7 +1,6 @@
 import asyncio
 import random
 import re
-import html
 from playwright.async_api import Page
 from config import TARGET_RESUME_NAME
 from ai.analyzer import generate_cover_letter
@@ -49,7 +48,6 @@ class Applicant:
         if await self._already_applied(page):
             add_applied_job(job_id, title, href)
             await notify(f"✅ Отклик (одним кликом): {title}\n{href}")
-            print(f"✅ Отклик отправлен (одним кликом): {title}")
             return True
 
         await self._select_resume(page)
@@ -90,12 +88,9 @@ class Applicant:
 
         add_applied_job(job_id, title, href)
         if letter_sent and cover_letter:
-            safe = html.escape(cover_letter)
-            await notify(f"✅ Отклик: {title}\n{href}\n\nПисьмо:\n{safe}")
-            print(f"✅ Отклик с письмом: {title}")
+            await notify(f"✅ Отклик: {title}\n{href}\n\nПисьмо:\n{cover_letter}")
         else:
             await notify(f"✅ Отклик без письма: {title}\n{href}")
-            print(f"✅ Отклик без письма: {title}")
         return True
 
     async def _already_applied(self, page: Page) -> bool:

@@ -5,6 +5,7 @@ from hh.auth import ensure_logged_in
 from hh.search import build_search_url, collect_vacancy_links, has_next_page, go_next_page
 from hh.vacancy import process_vacancy
 from hh.chats import check_new_messages
+from forms.runner import process_forms
 
 
 class HHAgent:
@@ -62,3 +63,6 @@ class HHAgent:
 
     async def check_chats(self, notify):
         await check_new_messages(self.session, notify)
+
+    async def process_forms(self, notify):
+        await process_forms(self.session, notify)
