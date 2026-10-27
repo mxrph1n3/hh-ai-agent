@@ -2,7 +2,7 @@ import asyncio
 import os
 import signal
 from config import (
-    ENABLE_AI_FILTER, LOOP_INTERVAL_MINUTES, ENABLE_CHATS, ENABLE_FORMS,
+    ENABLE_AI_FILTER, LOOP_INTERVAL_MINUTES, ENABLE_SEARCH, ENABLE_CHATS, ENABLE_FORMS,
 )
 from storage.db import init_db
 from hh.client import HHAgent
@@ -35,7 +35,9 @@ async def run_agent(stop_event: asyncio.Event):
         await notify("агент запущен. режим: удаленка по всему миру.")
 
         while not stop_event.is_set():
-            stages = [("поиск", lambda: agent.run_search_cycle(notify))]
+            stages = []
+            if ENABLE_SEARCH:
+                stages.append(("поиск", lambda: agent.run_search_cycle(notify)))
             if ENABLE_CHATS:
                 stages.append(("чаты", lambda: agent.check_chats(notify)))
             if ENABLE_FORMS:

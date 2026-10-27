@@ -75,7 +75,12 @@ python -m forms.cli list
 
 Статусы: `filled` — заполнена и ждёт вас, `needs_input` — не хватило данных для обязательных полей, `manual` — заполнять руками.
 
-Настройки в `.env`: `ENABLE_CHATS`, `ENABLE_FORMS`, `FORMS_MODEL`, `FORMS_MAX_PER_CYCLE`, `CHATS_SCAN_LIMIT`.
+Настройки в `.env`: `ENABLE_SEARCH`, `ENABLE_CHATS`, `ENABLE_FORMS`, `FORMS_MODEL`, `FORMS_MAX_PER_CYCLE`, `CHATS_SCAN_LIMIT`.
+
+Только чаты и анкеты, без поиска и откликов:
+```bash
+ENABLE_SEARCH=false python main.py
+```
 
 ## Как изменить локацию поиска?
 По умолчанию бот ищет вакансии сначала в Санкт-Петербурге (`&area=2`), а затем удаленку по всей РФ (`&area=113&schedule=remote`).

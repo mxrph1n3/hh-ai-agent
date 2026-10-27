@@ -128,6 +128,8 @@ crm маркетинг a b тесты лидогенерация b2b b2c скв�
 """
 
 # --- Чаты и формы из чатов ---
+# Поиск вакансий и отклики (false — только чаты и анкеты)
+ENABLE_SEARCH = os.getenv("ENABLE_SEARCH", "true").lower() in ("1", "true", "yes")
 # Обход чатов hh.ru/chat
 ENABLE_CHATS = os.getenv("ENABLE_CHATS", "true").lower() in ("1", "true", "yes")
 # Сколько чатов из списка просматривать за цикл
