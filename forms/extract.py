@@ -63,8 +63,12 @@ _JS_EXTRACT = r"""() => {
     REQ_RE.lastIndex = 0;
     // Подсказка к полю («Формат: +7911…») — через aria-describedby
     const db = el.getAttribute('aria-describedby');
-    const hint = db ? clean(byIds(db)).slice(0, 300) : '';
-    return { label: clean(raw.replace(REQ_RE, ' ')), required, hint };
+    let hint = db ? clean(byIds(db)).slice(0, 300) : '';
+    const label = clean(raw.replace(REQ_RE, ' '));
+    // Placeholder часто точнее заголовка блока («Расскажите о своих достижениях…»)
+    const ph = clean(el.getAttribute('placeholder') || '');
+    if (ph.length > 15 && ph !== label && !hint.includes(ph)) hint = clean(`${hint} ${ph}`).slice(0, 300);
+    return { label, required, hint };
   };
   const optionText = (el, clickable) => {
     const t = clean(
@@ -217,7 +221,9 @@ _JS_EXTRACT = r"""() => {
   };
 }"""
 
-NEXT_RE = re.compile(r"^\s*(далее|дальше|next|продолжить|следующ)", re.I)
+NEXT_RE = re.compile(
+    r"^\s*(далее|дальше|next|продолжить|следующ|пройти\s+(опрос|тест|анкету)|начать|перейти\s+к|start)", re.I)
+CONSENT_RE = re.compile(r"соглас|consent|персональн", re.I)
 SUBMIT_RE = re.compile(r"(отправить|submit|send|завершить|готово)", re.I)
 
 
@@ -310,6 +316,20 @@ async def find_nav_button(page: Page) -> tuple[str, object] | tuple[None, None]:
     if found_submit is not None:
         return "submit", found_submit
     return None, None
+
+
+async def toggle_consent(page: Page, fields: list[dict]) -> bool:
+    """Щёлкает одиночные галочки согласия. В некоторых формах (FriendWork) input
+    всегда checked, а настоящее состояние только в стилях — проверить его нельзя."""
+    clicked = False
+    for f in fields:
+        if f["type"] == "checkbox" and len(f["options"]) == 1 and CONSENT_RE.search(f["label"]):
+            try:
+                await page.locator(f'[data-hhf-opt="{f["id"]}:0"]').click(timeout=5000)
+                clicked = True
+            except Exception:
+                pass
+    return clicked
 
 
 async def collect_errors(page: Page) -> list[str]:

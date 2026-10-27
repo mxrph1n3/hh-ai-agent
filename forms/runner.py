@@ -6,7 +6,9 @@ import aiohttp
 from playwright.async_api import Page
 from config import FORMS_MAX_PER_CYCLE, FORMS_SHOTS_DIR
 from ai.form_answers import answer_fields, load_profile
-from forms.extract import collect_errors, extract_form, fill_field, find_nav_button, prepare_page
+from forms.extract import (
+    collect_errors, extract_form, fill_field, find_nav_button, prepare_page, toggle_consent,
+)
 from storage.db import get_forms_by_status, update_form
 
 MAX_PAGES = 10
@@ -101,15 +103,35 @@ async def run_form(page: Page, form: dict) -> dict:
             return result("needs_input", f"не заполнены обязательные поля: {names}")
 
         kind, button = await find_nav_button(page)
+        if kind == "submit":
+            # Опрос может подгрузиться позже и заменить «Отправить» на «Пройти опрос» (FriendWork)
+            await page.wait_for_timeout(3000)
+            kind, button = await find_nav_button(page)
         if kind == "next":
             await button.click()
             await page.wait_for_timeout(2500)
+            if await _same_page(page, signature) and await toggle_consent(page, fields):
+                # Кнопка не сработала: галочка согласия могла только выглядеть отмеченной
+                kind, button = await find_nav_button(page)
+                if kind == "next":
+                    await button.click()
+                    await page.wait_for_timeout(2500)
+                if await _same_page(page, signature):
+                    await toggle_consent(page, fields)  # не помогло — возвращаем как было
             continue
         if kind == "submit":
             # Последняя страница: дальше только «Отправить» — это делает человек
             return result("filled")
         return result("manual", "не нашли кнопку «Далее» или «Отправить»")
     return result("manual", f"больше {MAX_PAGES} страниц")
+
+
+async def _same_page(page: Page, signature: list[str]) -> bool:
+    try:
+        info = await extract_form(page)
+    except Exception:
+        return False
+    return [f["label"] for f in info["fields"]] == signature
 
 
 async def process_forms(session, notify):
